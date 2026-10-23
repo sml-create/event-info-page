@@ -11,6 +11,8 @@
 
 [data-field="overview"],[data-field="shortTitle"]{white-space:pre-line}
 .tags span span{border:0;padding:0;font:inherit}
+/* イラスト削除後は導入文を1列で配置する */
+.hero{grid-template-columns:minmax(0,1fr);min-height:0;gap:0}
 </style>
 
 </head>
@@ -35,7 +37,6 @@
       <a class="button" href="#participation">投稿方法を確認する <span aria-hidden="true">↗</span></a>
       <p class="hero-caption">スマートフォンから、あなたらしい一本を。</p>
     </div>
-    <div class="hero-art" aria-hidden="true"><div class="art-grid"></div><span class="art-caption">YOUR MOMENT.<br>YOUR STORY.</span><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-card card-back"><span></span><span></span><span></span></div><div class="art-card card-front"><div class="chart-header"><i></i><span>SHARE YOUR IDEAS</span><b>↗</b></div><div class="chart"><i></i><i></i><i></i><i></i><i></i></div><div class="chart-line"></div><small>何気ない毎日が、物語になる。</small></div><span class="art-dot dot-one"></span><span class="art-dot dot-two"></span><span class="art-note">CREATE &amp; SHARE</span></div>
   </section>
   <nav class="section-nav" aria-label="ページ内メニュー"><a href="#overview">イベント概要</a><a href="#participation">投稿方法</a><a href="#prizes">入賞特典</a><a href="#judging">審査方法</a></nav>
   <div class="page-body"><div class="main-column">
