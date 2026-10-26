@@ -6,7 +6,7 @@
 <header class="tools"><h1>白紙からつくるページ編集ツール</h1>
 <div class="row"><button id="edit" aria-pressed="true">編集</button><button id="preview" aria-pressed="false">プレビュー</button><label>表示幅 <select id="width"><option value="desktop">PC</option><option value="mobile">スマートフォン</option></select></label><label>ブラウザのタブ名 <input id="title" value="ご案内" maxlength="120"></label></div>
 <div class="row" id="editing-tools"><label>追加する種類 <select id="kind"><option value="p">本文</option><option value="h1">大見出し</option><option value="h2">中見出し</option><option value="h3">小見出し</option></select></label><button id="add">文章を追加</button><button id="bold"><b>太字</b></button><button id="list">箇条書き</button><button id="link">リンク設定</button><button id="unlink">リンク解除</button><button id="up">上へ</button><button id="down">下へ</button><button id="remove">選択した文章を削除</button></div>
-<div class="row"><button id="save">編集用コピーを保存</button><button class="primary" id="download">公開用HTMLをダウンロード</button><span id="status" role="status">白紙です</span></div>
+<div class="row"><button id="import">既存ページを読み込む</button><input id="import-file" type="file" accept=".html,.htm,text/html" hidden><button id="save">編集用コピーを保存</button><button class="primary" id="download">公開用HTMLをダウンロード</button><span id="status" role="status">白紙です</span></div>
 <p id="help">「文章を追加」から始めてください。選んだ文章の後に追加します。配置は文章の順序で調整できます。Enterで改行、文字を選択して太字・リンクを設定できます。</p><p>自動保存はありません。終了前に「編集用コピーを保存」してください。公開用HTMLの保存だけではWebサイトは更新されません。</p>
 </header><div id="stage"><iframe id="page" title="ページの編集とプレビュー" sandbox="allow-same-origin"></iframe></div>
 <script id="saved-document" type="application/json">{"title":"ご案内","blocks":[]}</script>
@@ -14,6 +14,7 @@
 'use strict';
 const pageCSS="*{box-sizing:border-box}html{color-scheme:light}body{margin:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",\"Hiragino Kaku Gothic ProN\",Meiryo,sans-serif;font-size:16px;line-height:1.9;overflow-wrap:anywhere}main{max-width:800px;margin:auto;padding:48px 28px 80px}h1,h2,h3{line-height:1.5;margin:0;font-weight:700}h1{font-size:32px}h2{font-size:25px}h3{font-size:20px}p{margin:0}a{color:#1753a0;text-decoration:underline}ul,ol{padding-left:1.6em;margin:.5em 0}.text-block{margin:0 0 24px;white-space:pre-wrap}.text-block>*{white-space:normal}.text-block div{white-space:pre-wrap}@media(max-width:600px){main{padding:28px 20px 60px}h1{font-size:27px}h2{font-size:23px}h3{font-size:19px}}";
 const data=JSON.parse(document.getElementById('saved-document').textContent);
+let documentCSS=data.css??pageCSS;
 const frame=document.getElementById('page'),status=document.getElementById('status');
 let doc,selected=null,editing=true,dirty=false;
 const titleInput=document.getElementById('title');titleInput.value=data.title;
@@ -31,7 +32,7 @@ function blocks(){return [...doc.querySelector('main').children].map(el=>({kind:
 function output(){const html=doc.documentElement.cloneNode(true);html.querySelector('#editing-style').remove();html.querySelector('body').removeAttribute('class');html.querySelector('title').textContent=titleInput.value||'ご案内';for(const el of html.querySelector('main').children){const clean=doc.createElement(el.dataset.kind==='p'?'div':el.dataset.kind);clean.className='text-block';clean.innerHTML=safeHTML(el.innerHTML);el.replaceWith(clean);}return '<!doctype html>\n'+html.outerHTML;}
 function download(text,name){const url=URL.createObjectURL(new Blob([text],{type:'text/html;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 frame.addEventListener('load',()=>{doc=frame.contentDocument;for(const block of data.blocks)doc.querySelector('main').append(makeBlock(block.kind,block.html));doc.addEventListener('focusin',e=>{const block=e.target.closest('.text-block');if(block)select(block);});doc.addEventListener('input',changed);doc.addEventListener('paste',e=>{if(!editing)return;e.preventDefault();doc.execCommand('insertText',false,e.clipboardData.getData('text/plain'));});doc.addEventListener('drop',e=>e.preventDefault());doc.addEventListener('click',e=>{if(editing&&e.target.closest('a'))e.preventDefault();});if(data.blocks.length)status.textContent='保存した内容を開きました';buttons();});
-frame.srcdoc='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ご案内</title><style>'+pageCSS+'</style><style id="editing-style">body.editing .text-block{outline:1px dashed #aaa;outline-offset:5px;min-height:1.9em}body.editing .text-block.selected{outline:2px solid #333}body.editing .text-block:empty:before{content:attr(data-placeholder);color:#999;pointer-events:none}</style></head><body class="editing"><main></main></body></html>';
+frame.srcdoc='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ご案内</title><style>'+documentCSS+'</style><style id="editing-style">body.editing .text-block{outline:1px dashed #aaa;outline-offset:5px;min-height:1.9em}body.editing .text-block.selected{outline:2px solid #333}body.editing .text-block:empty:before{content:attr(data-placeholder);color:#999;pointer-events:none}</style></head><body class="editing"><main></main></body></html>';
 document.getElementById('add').onclick=()=>{if(!doc)return;const el=makeBlock(document.getElementById('kind').value,'');if(selected)selected.after(el);else doc.querySelector('main').append(el);select(el);el.focus();changed();};
 function mode(value){editing=value;doc.body.classList.toggle('editing',value);doc.querySelectorAll('.text-block').forEach(el=>el.contentEditable=String(value));document.getElementById('editing-tools').hidden=!value;document.getElementById('edit').setAttribute('aria-pressed',String(value));document.getElementById('preview').setAttribute('aria-pressed',String(!value));document.getElementById('help').textContent=value?'文章をクリックして編集します。選んだ文章の後に追加できます。Enterで改行、文字を選択して太字・リンクを設定できます。':'公開時の見た目です。編集を続けるには「編集」を押してください。';}
 document.getElementById('edit').onclick=()=>mode(true);document.getElementById('preview').onclick=()=>mode(false);
@@ -45,6 +46,39 @@ document.getElementById('down').onclick=()=>{if(selected?.nextElementSibling){se
 document.getElementById('remove').onclick=()=>{if(!selected)return;selected.remove();select(null);changed();};
 titleInput.oninput=changed;
 document.getElementById('download').onclick=()=>{download(output(),'index.html');status.textContent='公開用HTMLを出力しました。編集用コピーも保存してください。';};
-document.getElementById('save').onclick=()=>{const copy=document.documentElement.cloneNode(true);copy.querySelector('#saved-document').textContent=JSON.stringify({title:titleInput.value,blocks:blocks()}).replace(/</g,'\\u003c');copy.querySelector('#page').removeAttribute('srcdoc');download('<!doctype html>\n'+copy.outerHTML,'editor.html');dirty=false;status.textContent='編集用コピーを出力しました。保存先をご確認ください。';};
+document.getElementById('save').onclick=()=>{const copy=document.documentElement.cloneNode(true);copy.querySelector('#saved-document').textContent=JSON.stringify({title:titleInput.value,css:documentCSS,blocks:blocks()}).replace(/</g,'\\u003c');copy.querySelector('#page').removeAttribute('srcdoc');download('<!doctype html>\n'+copy.outerHTML,'editor.html');dirty=false;status.textContent='編集用コピーを出力しました。保存先をご確認ください。';};
+// このツールが出力した静的HTMLを読み込む。未対応の構造は変換せず、説明して停止する。
+function readPublicHTML(text){
+ const parsed=new DOMParser().parseFromString(text,'text/html');
+ const main=parsed.querySelector('body > main');
+ if(!main||parsed.querySelectorAll('main').length!==1||parsed.querySelector('script,iframe,object,embed,link,base,form,svg,math'))throw new Error('この編集ツールで出力した公開用HTMLを選択してください。外部スクリプトや別の構成を含むページには対応していません。');
+ if([...parsed.body.children].some(el=>el!==main)||[...parsed.body.childNodes].some(el=>el.nodeType===3&&el.textContent.trim()))throw new Error('本文以外の独自レイアウトを含むため、見た目を保って読み込めません。このツールで出力したHTMLを選択してください。');
+ const styles=[...parsed.head.querySelectorAll('style')];
+ if(!styles.length||parsed.querySelector('body style')||styles.some(el=>/@import|url\s*\(/i.test(el.textContent)))throw new Error('外部ファイルを参照しない、このツールの公開用HTMLを選択してください。');
+ if([...main.childNodes].some(el=>el.nodeType===3&&el.textContent.trim()))throw new Error('対応していない本文構造です。元ファイルは変更していません。');
+ const imported=[];
+ for(const el of main.children){
+  if(!['DIV','H1','H2','H3'].includes(el.tagName)||el.className!=='text-block')throw new Error('対応していない見出し・本文の構成です。このツールで出力したHTMLを選択してください。');
+  const html=safeHTML(el.innerHTML);
+  if(html!==el.innerHTML)throw new Error('対応していない装飾や属性が含まれています。文章や見た目を勝手に変更しないため、読み込みを中止しました。');
+  imported.push({kind:el.tagName==='DIV'?'p':el.tagName.toLowerCase(),html});
+ }
+ return {title:parsed.title||'ご案内',css:styles.map(el=>el.textContent).join('\n'),blocks:imported};
+}
+document.getElementById('import').onclick=()=>document.getElementById('import-file').click();
+document.getElementById('import-file').onchange=async e=>{
+ const file=e.target.files[0];if(!file)return;
+ try{
+  if(file.size>5*1024*1024)throw new Error('5MB以下のHTMLファイルを選択してください。');
+  const imported=readPublicHTML(await file.text());
+  if(dirty&&!confirm('未保存の編集内容を、読み込むページに置き換えます。必要な場合はキャンセルして編集用コピーを保存してください。続けますか？'))return;
+  // 検証完了後だけ現在の内容を置き換える。
+  doc.querySelector('main').replaceChildren(...imported.blocks.map(block=>makeBlock(block.kind,block.html)));
+  documentCSS=imported.css;doc.head.querySelector('style').textContent=documentCSS;
+  titleInput.value=imported.title;doc.title=imported.title;select(null);mode(true);dirty=true;
+  status.textContent=file.name+' を読み込みました。編集後は新しいHTMLをダウンロードしてください。';
+ }catch(error){status.textContent='読み込めませんでした：'+error.message;}
+ finally{e.target.value='';}
+};
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 </script></body></html>
